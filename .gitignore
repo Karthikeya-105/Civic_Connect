@@ -1,0 +1,37 @@
+# Node
+**/node_modules
+npm-debug.log*
+Yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Env files
+.env
+.env.*
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# Uploads and runtime files
+uploads/
+uploads/*
+
+# VSCode
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Coverage
+coverage/
+
+# Misc
+.idea/
