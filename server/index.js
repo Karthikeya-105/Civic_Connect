@@ -64,13 +64,13 @@ io.on('connection', (socket) => {
 // Make io available globally for emitting from routes
 global.io = io;
 
-// Connect to MySQL
+// Connect to Database (PostgreSQL on Render, MySQL locally)
 const PORT = process.env.PORT || 5000;
 
 sequelize.authenticate()
     .then(() => {
-        console.log('✅ MySQL connected');
-        return sequelize.sync();
+        console.log('✅ Database connected');
+        return sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
     })
     .then(() => {
         console.log('✅ Database models synchronized');
@@ -79,10 +79,10 @@ sequelize.authenticate()
         });
     })
     .catch(err => {
-        console.error('❌ MySQL Connection or Sync Failed!');
+        console.error('❌ Database Connection or Sync Failed!');
         console.error('Error:', err.message);
 
-        console.warn('⚠️  CRITICAL: MySQL connection failed.');
+        console.warn('⚠️  CRITICAL: Database connection failed.');
         console.warn('⚠️  The app will start in DEMO MODE, but data will NOT be saved to the database.');
 
         server.listen(PORT, () => {
