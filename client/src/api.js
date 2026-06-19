@@ -3,8 +3,8 @@ import axios from 'axios';
 // Use env var if set, otherwise detect prod vs dev automatically
 const BASE_URL = import.meta.env.VITE_API_URL ||
     (import.meta.env.PROD
-        ? 'https://civic-connect-api-oumt.onrender.com'
-        : 'http://localhost:10000');
+        ? 'https://civic-connect-api-oumt.onrender.com/api'
+        : 'http://localhost:10000/api');
 
 const api = axios.create({
     baseURL: BASE_URL,
