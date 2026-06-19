@@ -6,9 +6,10 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
-# Env files
+# Env files - ignore secrets but allow production config
 .env
-.env.*
+.env.local
+.env.*.local
 
 # Build outputs
 dist/
