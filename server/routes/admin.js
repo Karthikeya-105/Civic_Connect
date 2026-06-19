@@ -5,7 +5,7 @@ const authMiddleware = require('../middleware/auth');
 const { Issue, User, UserBadge, VoucherClaim, sequelize } = require('../models');
 
 const isDBConnected = () => {
-    return !!process.env.DB_HOST;
+    return !!(process.env.DATABASE_URL || process.env.DB_HOST);
 };
 
 // Middleware: admin only

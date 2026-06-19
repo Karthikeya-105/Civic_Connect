@@ -7,7 +7,7 @@ const { Issue, User, Notification, IssueTimeline, IssueUpvote, IssueVerification
 const { notifyIssueUpdate, sendEmail } = require('../middleware/notify');
 
 const useDB = () => {
-    return !!process.env.DB_HOST;
+    return !!(process.env.DATABASE_URL || process.env.DB_HOST);
 };
 
 const isValidId = (id) => {

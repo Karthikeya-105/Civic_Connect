@@ -4,7 +4,7 @@ const authMiddleware = require('../middleware/auth');
 const { Notification } = require('../models');
 
 const isDBConnected = () => {
-    return !!process.env.DB_HOST;
+    return !!(process.env.DATABASE_URL || process.env.DB_HOST);
 };
 
 // Demo notifications for when DB is not connected

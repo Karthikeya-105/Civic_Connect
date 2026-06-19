@@ -94,7 +94,7 @@ const DEMO_USERS = {
 
 // Check if we should use SQL or allow Demo fallback
 const useDB = () => {
-    return !!process.env.DB_HOST;
+    return !!(process.env.DATABASE_URL || process.env.DB_HOST);
 };
 
 // ─── SIGNUP ──────────────────────────────────────────────────────────────────
