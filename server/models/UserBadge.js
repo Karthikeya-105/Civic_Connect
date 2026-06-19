@@ -1,28 +1,28 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Comment = sequelize.define('Comment', {
+const UserBadge = sequelize.define('UserBadge', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true
     },
-    issueId: {
+    userId: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    authorId: {
-        type: DataTypes.INTEGER,
+    name: {
+        type: DataTypes.STRING,
         allowNull: false
     },
-    text: {
-        type: DataTypes.TEXT,
+    icon: {
+        type: DataTypes.STRING,
         allowNull: false
     },
-    isOfficial: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
+    earnedAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
     }
 });
 
-module.exports = Comment;
+module.exports = UserBadge;

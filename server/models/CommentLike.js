@@ -1,28 +1,20 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Comment = sequelize.define('Comment', {
+const CommentLike = sequelize.define('CommentLike', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true
     },
-    issueId: {
+    commentId: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    authorId: {
+    userId: {
         type: DataTypes.INTEGER,
         allowNull: false
-    },
-    text: {
-        type: DataTypes.TEXT,
-        allowNull: false
-    },
-    isOfficial: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
     }
 });
 
-module.exports = Comment;
+module.exports = CommentLike;

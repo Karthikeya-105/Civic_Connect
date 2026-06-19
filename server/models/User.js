@@ -1,61 +1,125 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true, trim: true },
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password: { type: String, required: true, minlength: 6 },
-  role: { type: String, default: 'citizen' }, // citizen | admin | dept_admin
-  department: { type: String, default: '' }, // for dept_admin: Sanitation Department, Roads, etc.
-  avatar: { type: String, default: '' },
-  phone: { type: String, default: '' },
-  whatsapp: { type: String, default: '' },
-  address: { type: String, default: '' },
-
-  // Gamification
-  points: { type: Number, default: 0 },
-  badges: [{
-    name: String,
-    icon: String,
-    earnedAt: { type: Date, default: Date.now }
-  }],
-  level: { type: String, default: 'Civic Newcomer' },
-  reportCount: { type: Number, default: 0 },
-  resolvedCount: { type: Number, default: 0 },
-  upvotesGiven: { type: Number, default: 0 },
-
-  // Environmental impact
-  treesSaved: { type: Number, default: 0 },
-  co2Reduced: { type: Number, default: 0 },
-  paperSaved: { type: Number, default: 0 },
-
-  // Settings
-  notifications: { type: Boolean, default: true },
-  notifyWhatsapp: { type: Boolean, default: true },
-  notifyEmail: { type: Boolean, default: true },
-  // Vouchers redeemed
-  redeemedVouchers: [{ voucherId: String, code: String, redeemedAt: { type: Date, default: Date.now } }],
-  language: { type: String, default: 'en' },
-
-  createdAt: { type: Date, default: Date.now },
-  lastLogin: { type: Date, default: Date.now },
+const User = sequelize.define('User', {
+    id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+        validate: {
+            isEmail: true
+        }
+    },
+    password: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    role: {
+        type: DataTypes.STRING,
+        defaultValue: 'citizen'
+    },
+    department: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    avatar: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    phone: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    whatsapp: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    address: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    points: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    level: {
+        type: DataTypes.STRING,
+        defaultValue: 'Civic Newcomer'
+    },
+    reportCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    resolvedCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    upvotesGiven: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    treesSaved: {
+        type: DataTypes.FLOAT,
+        defaultValue: 0.0
+    },
+    co2Reduced: {
+        type: DataTypes.FLOAT,
+        defaultValue: 0.0
+    },
+    paperSaved: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    notifications: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    notifyWhatsapp: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    notifyEmail: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    language: {
+        type: DataTypes.STRING,
+        defaultValue: 'en'
+    },
+    lastLogin: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    hooks: {
+        beforeSave: async (user) => {
+            if (user.changed('password')) {
+                user.password = await bcrypt.hash(user.password, 12);
+            }
+        }
+    }
 });
 
-userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
-  this.password = await bcrypt.hash(this.password, 12);
-});
-
-userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+User.prototype.comparePassword = async function (candidatePassword) {
+    return bcrypt.compare(candidatePassword, this.password);
 };
 
-userSchema.methods.updateLevel = function () {
-  if (this.points >= 500) this.level = 'Civic Champion';
-  else if (this.points >= 200) this.level = 'Eco Warrior';
-  else if (this.points >= 100) this.level = 'Community Guardian';
-  else if (this.points >= 50) this.level = 'Civic Volunteer';
-  else this.level = 'Civic Newcomer';
+User.prototype.updateLevel = function () {
+    if (this.points >= 500) this.level = 'Civic Champion';
+    else if (this.points >= 200) this.level = 'Eco Warrior';
+    else if (this.points >= 100) this.level = 'Community Guardian';
+    else if (this.points >= 50) this.level = 'Civic Volunteer';
+    else this.level = 'Civic Newcomer';
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = User;

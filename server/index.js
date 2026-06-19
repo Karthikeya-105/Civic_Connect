@@ -1,5 +1,5 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const { sequelize } = require('./models');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const http = require('http');
@@ -64,25 +64,26 @@ io.on('connection', (socket) => {
 // Make io available globally for emitting from routes
 global.io = io;
 
-// Connect to MongoDB
+// Connect to MySQL
 const PORT = process.env.PORT || 5000;
 
-mongoose.connect(process.env.MONGO_URI)
+sequelize.authenticate()
     .then(() => {
-        console.log('✅ MongoDB Atlas connected');
+        console.log('✅ MySQL connected');
+        return sequelize.sync();
+    })
+    .then(() => {
+        console.log('✅ Database models synchronized');
         server.listen(PORT, () => {
             console.log(`🚀 Server running on http://localhost:${PORT}`);
         });
     })
     .catch(err => {
-        console.error('❌ MongoDB Connection Failed!');
+        console.error('❌ MySQL Connection or Sync Failed!');
         console.error('Error:', err.message);
 
-        if (process.env.MONGO_URI) {
-            console.warn('⚠️  CRITICAL: MONGO_URI is set but connection failed.');
-            console.warn('⚠️  The app will start in DEMO MODE, but data will NOT be saved to the database.');
-            console.warn('⚠️  Please check your IP whitelist in MongoDB Atlas and your credentials.');
-        }
+        console.warn('⚠️  CRITICAL: MySQL connection failed.');
+        console.warn('⚠️  The app will start in DEMO MODE, but data will NOT be saved to the database.');
 
         server.listen(PORT, () => {
             console.log(`🚀 Server running on http://localhost:${PORT} (FALLBACK DEMO MODE)`);

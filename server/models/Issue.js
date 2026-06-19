@@ -1,67 +1,120 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const issueSchema = new mongoose.Schema({
-    title: { type: String, required: true, trim: true },
-    description: { type: String, required: true },
+const Issue = sequelize.define('Issue', {
+    id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    title: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: false
+    },
     category: {
-        type: String,
-        enum: ['garbage', 'roads', 'water', 'sanitation', 'lighting', 'electricity', 'drainage', 'other'],
-        required: true
+        type: DataTypes.STRING,
+        allowNull: false
     },
-    severity: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
+    severity: {
+        type: DataTypes.STRING,
+        defaultValue: 'medium'
+    },
     status: {
-        type: String,
-        enum: ['submitted', 'verified', 'assigned', 'progress', 'resolved', 'closed'],
-        default: 'submitted'
+        type: DataTypes.STRING,
+        defaultValue: 'submitted'
     },
-    location: {
-        lat: { type: Number, required: true },
-        lng: { type: Number, required: true },
-        address: { type: String, default: '' },
-        ward: { type: String, default: '' },
-        district: { type: String, default: '' },
+    locationLat: {
+        type: DataTypes.DOUBLE,
+        allowNull: false
     },
-    images: [{ type: String }],
-    resolvedImage: { type: String, default: '' },
-    audio: { type: String, default: '' },
-
-    reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    assignedTo: { type: String, default: '' },
-    assignedDept: { type: String, default: '' },
-
-    upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    upvoteCount: { type: Number, default: 0 },
-
-    // AI metadata
-    aiCategory: { type: String, default: '' },
-    aiConfidence: { type: Number, default: 0 },
-    aiSeverity: { type: String, default: '' },
-    isDuplicate: { type: Boolean, default: false },
-    duplicateOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Issue', default: null },
-
-    // Timeline
-    timeline: [{
-        status: String,
-        message: String,
-        updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        timestamp: { type: Date, default: Date.now }
-    }],
-
-    // Gamification
-    pointsAwarded: { type: Number, default: 15 },
-    verifiedByCount: { type: Number, default: 0 },
-
-    // Before-after verification
-    resolutionVerified: { type: Boolean, default: false },
-    resolutionVerifiedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-
-    estimatedResolution: { type: Date },
-    resolvedAt: { type: Date },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
+    locationLng: {
+        type: DataTypes.DOUBLE,
+        allowNull: false
+    },
+    locationAddress: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    locationWard: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    locationDistrict: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    images: {
+        type: DataTypes.JSON,
+        defaultValue: []
+    },
+    resolvedImage: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    audio: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    reportedById: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    assignedTo: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    assignedDept: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    upvoteCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    aiCategory: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    aiConfidence: {
+        type: DataTypes.FLOAT,
+        defaultValue: 0.0
+    },
+    aiSeverity: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    isDuplicate: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    duplicateOfId: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    pointsAwarded: {
+        type: DataTypes.INTEGER,
+        defaultValue: 15
+    },
+    verifiedByCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    resolutionVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    estimatedResolution: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    resolvedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    }
 });
 
-issueSchema.index({ 'location.lat': 1, 'location.lng': 1 });
-issueSchema.index({ category: 1, status: 1, createdAt: -1 });
-
-module.exports = mongoose.model('Issue', issueSchema);
+module.exports = Issue;

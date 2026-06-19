@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Comment = sequelize.define('Comment', {
+const IssueTimeline = sequelize.define('IssueTimeline', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
@@ -11,18 +11,22 @@ const Comment = sequelize.define('Comment', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    authorId: {
+    status: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    message: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    updatedById: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: true
     },
-    text: {
-        type: DataTypes.TEXT,
-        allowNull: false
-    },
-    isOfficial: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
+    timestamp: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
     }
 });
 
-module.exports = Comment;
+module.exports = IssueTimeline;

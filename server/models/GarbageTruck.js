@@ -1,18 +1,61 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const garbageTruckSchema = new mongoose.Schema({
-    vehicleId: { type: String, required: true, unique: true },
-    vehicleName: { type: String, required: true },
-    driverName: { type: String, default: '' },
-    driverPhone: { type: String, default: '' },
-    department: { type: String, default: 'Sanitation Department' },
-    area: { type: String, default: '' },
-    lat: { type: Number, default: 12.9716 },
-    lng: { type: Number, default: 77.5946 },
-    status: { type: String, default: 'active', enum: ['active', 'idle', 'offline', 'maintenance'] },
-    route: { type: String, default: '' },
-    lastUpdated: { type: Date, default: Date.now },
-    schedule: { type: String, default: '' }, // e.g. "Mon-Sat: 6AM-12PM"
-}, { timestamps: true });
+const GarbageTruck = sequelize.define('GarbageTruck', {
+    id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    vehicleId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true
+    },
+    vehicleName: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    driverName: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    driverPhone: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    department: {
+        type: DataTypes.STRING,
+        defaultValue: 'Sanitation Department'
+    },
+    area: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    lat: {
+        type: DataTypes.DOUBLE,
+        defaultValue: 12.9716
+    },
+    lng: {
+        type: DataTypes.DOUBLE,
+        defaultValue: 77.5946
+    },
+    status: {
+        type: DataTypes.STRING,
+        defaultValue: 'active'
+    },
+    route: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    lastUpdated: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    },
+    schedule: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    }
+});
 
-module.exports = mongoose.model('GarbageTruck', garbageTruckSchema);
+module.exports = GarbageTruck;

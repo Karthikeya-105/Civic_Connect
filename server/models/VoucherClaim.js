@@ -1,28 +1,28 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Comment = sequelize.define('Comment', {
+const VoucherClaim = sequelize.define('VoucherClaim', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true
     },
-    issueId: {
+    voucherId: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    authorId: {
+    userId: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    text: {
-        type: DataTypes.TEXT,
+    code: {
+        type: DataTypes.STRING,
         allowNull: false
     },
-    isOfficial: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
+    claimedAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
     }
 });
 
-module.exports = Comment;
+module.exports = VoucherClaim;

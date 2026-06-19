@@ -1,29 +1,56 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const voucherSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    description: { type: String, default: '' },
-    pointsCost: { type: Number, required: true },
-    discountValue: { type: String, default: '' }, // e.g. "10% off", "₹100 off"
-    category: { type: String, default: 'general' }, // fuel, grocery, electricity, transport, general
-    imageEmoji: { type: String, default: '🎟️' },
-    totalStock: { type: Number, default: 100 },
-    isActive: { type: Boolean, default: true },
-    expiresAt: { type: Date, default: () => new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) }, // 90 days default
-    claimedBy: [{
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        code: { type: String },
-        claimedAt: { type: Date, default: Date.now }
-    }],
-    partner: { type: String, default: '' }, // e.g. "Indian Oil", "BigBasket"
-    termsConditions: { type: String, default: 'Subject to availability. Cannot be combined with other offers.' },
-}, { timestamps: true });
-
-// Virtual for remaining stock
-voucherSchema.virtual('remaining').get(function () {
-    return this.totalStock - this.claimedBy.length;
+const Voucher = sequelize.define('Voucher', {
+    id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    title: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    description: {
+        type: DataTypes.TEXT,
+        defaultValue: ''
+    },
+    pointsCost: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    discountValue: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    category: {
+        type: DataTypes.STRING,
+        defaultValue: 'general'
+    },
+    imageEmoji: {
+        type: DataTypes.STRING,
+        defaultValue: '🎟️'
+    },
+    totalStock: {
+        type: DataTypes.INTEGER,
+        defaultValue: 100
+    },
+    isActive: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    expiresAt: {
+        type: DataTypes.DATE,
+        defaultValue: () => new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+    },
+    partner: {
+        type: DataTypes.STRING,
+        defaultValue: ''
+    },
+    termsConditions: {
+        type: DataTypes.TEXT,
+        defaultValue: 'Subject to availability. Cannot be combined with other offers.'
+    }
 });
 
-voucherSchema.set('toJSON', { virtuals: true });
-
-module.exports = mongoose.model('Voucher', voucherSchema);
+module.exports = Voucher;

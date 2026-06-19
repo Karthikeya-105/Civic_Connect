@@ -1,23 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
+const { Op } = require('sequelize');
 const authMiddleware = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const Issue = require('../models/Issue');
-const User = require('../models/User');
-const Notification = require('../models/Notification');
+const { Issue, User, Notification, IssueTimeline, IssueUpvote, IssueVerification, sequelize } = require('../models');
 const { notifyIssueUpdate, sendEmail } = require('../middleware/notify');
 
-const useDB = () => mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2;
-const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
+const useDB = () => {
+    return !!process.env.DB_HOST;
+};
+
+const isValidId = (id) => {
+    if (!useDB()) return true;
+    return !isNaN(parseInt(id));
+};
 
 // ── Demo issues for no-DB mode ──────────────────────────────────────────────
 const DEMO_ISSUES = [
-    { _id: 'demo_i1', title: 'Large Pothole on MG Road', description: 'Dangerous pothole causing accidents near the main junction. Cars are swerving dangerously.', category: 'roads', severity: 'high', status: 'progress', location: { lat: 28.6139, lng: 77.2090, address: 'MG Road, New Delhi' }, images: [], upvotes: [], upvoteCount: 24, assignedDept: 'Public Works Department', reportedBy: { name: 'Priya Sharma', level: 'Civic Volunteer' }, aiCategory: 'roads', aiConfidence: 95, timeline: [{ status: 'submitted', message: 'Issue submitted by citizen', timestamp: new Date(Date.now() - 5 * 86400000) }, { status: 'progress', message: 'Team dispatched for repair', timestamp: new Date(Date.now() - 86400000) }], createdAt: new Date(Date.now() - 5 * 86400000), estimatedResolution: new Date(Date.now() + 2 * 86400000) },
-    { _id: 'demo_i2', title: 'Overflowing Garbage Bins in Sector 12', description: 'Garbage bins have not been emptied for 5 days. Extremely foul smell and health hazard.', category: 'garbage', severity: 'high', status: 'submitted', location: { lat: 28.7041, lng: 77.1025, address: 'Sector 12, Rohini, Delhi' }, images: [], upvotes: [], upvoteCount: 47, assignedDept: 'Sanitation Department', reportedBy: { name: 'Amit Kumar', level: 'Eco Warrior' }, timeline: [{ status: 'submitted', message: 'Issue submitted', timestamp: new Date(Date.now() - 2 * 86400000) }], createdAt: new Date(Date.now() - 2 * 86400000) },
-    { _id: 'demo_i3', title: 'Street Light Not Working Near Park', description: 'Three streetlights near the children park are non-functional for 2 weeks. Safety risk at night.', category: 'lighting', severity: 'medium', status: 'assigned', location: { lat: 12.9716, lng: 77.5946, address: 'Cubbon Park, Bengaluru' }, images: [], upvotes: [], upvoteCount: 18, assignedDept: 'Electricity Department', reportedBy: { name: 'Lakshmi Rao', level: 'Community Guardian' }, timeline: [{ status: 'submitted', message: 'Submitted', timestamp: new Date(Date.now() - 10 * 86400000) }, { status: 'assigned', message: 'Assigned to Electricity Dept', timestamp: new Date(Date.now() - 3 * 86400000) }], createdAt: new Date(Date.now() - 10 * 86400000) },
-    { _id: 'demo_i4', title: 'Water Pipeline Leakage on Station Road', description: 'Major pipe burst causing water wastage and road damage. Affecting 200+ households.', category: 'water', severity: 'critical', status: 'resolved', location: { lat: 19.0760, lng: 72.8777, address: 'Station Road, Mumbai' }, images: [], resolvedImage: '', upvotes: [], upvoteCount: 92, assignedDept: 'Water Supply Board', reportedBy: { name: 'Rahul Singh', level: 'Civic Champion' }, timeline: [{ status: 'submitted', message: 'Submitted', timestamp: new Date(Date.now() - 15 * 86400000) }, { status: 'progress', message: 'Repair team on-site', timestamp: new Date(Date.now() - 12 * 86400000) }, { status: 'resolved', message: 'Pipeline repaired and tested', timestamp: new Date(Date.now() - 8 * 86400000) }], createdAt: new Date(Date.now() - 15 * 86400000), resolvedAt: new Date(Date.now() - 8 * 86400000) },
-    { _id: 'demo_i5', title: 'Open Manhole on Brigade Road', description: 'Uncovered manhole in busy pedestrian area. Already caused one injury. Immediate action needed.', category: 'drainage', severity: 'critical', status: 'verified', location: { lat: 12.9766, lng: 77.6031, address: 'Brigade Road, Bengaluru' }, images: [], upvotes: [], upvoteCount: 65, assignedDept: 'Drainage & Infrastructure', reportedBy: { name: 'Sneha Patel', level: 'Eco Warrior' }, timeline: [{ status: 'submitted', message: 'Submitted', timestamp: new Date(Date.now() - 1 * 86400000) }, { status: 'verified', message: 'Verified by admin', timestamp: new Date(Date.now() - 12 * 3600000) }], createdAt: new Date(Date.now() - 86400000) },
+    { id: 'demo_i1', title: 'Large Pothole on MG Road', description: 'Dangerous pothole causing accidents near the main junction. Cars are swerving dangerously.', category: 'roads', severity: 'high', status: 'progress', location: { lat: 28.6139, lng: 77.2090, address: 'MG Road, New Delhi' }, images: [], upvotes: [], upvoteCount: 24, assignedDept: 'Public Works Department', reportedBy: { name: 'Priya Sharma', level: 'Civic Volunteer' }, aiCategory: 'roads', aiConfidence: 95, timeline: [{ status: 'submitted', message: 'Issue submitted by citizen', timestamp: new Date(Date.now() - 5 * 86400000) }, { status: 'progress', message: 'Team dispatched for repair', timestamp: new Date(Date.now() - 86400000) }], createdAt: new Date(Date.now() - 5 * 86400000), estimatedResolution: new Date(Date.now() + 2 * 86400000) },
+    { id: 'demo_i2', title: 'Overflowing Garbage Bins in Sector 12', description: 'Garbage bins have not been emptied for 5 days. Extremely foul smell and health hazard.', category: 'garbage', severity: 'high', status: 'submitted', location: { lat: 28.7041, lng: 77.1025, address: 'Sector 12, Rohini, Delhi' }, images: [], upvotes: [], upvoteCount: 47, assignedDept: 'Sanitation Department', reportedBy: { name: 'Amit Kumar', level: 'Eco Warrior' }, timeline: [{ status: 'submitted', message: 'Issue submitted', timestamp: new Date(Date.now() - 2 * 86400000) }], createdAt: new Date(Date.now() - 2 * 86400000) },
+    { id: 'demo_i3', title: 'Street Light Not Working Near Park', description: 'Three streetlights near the children park are non-functional for 2 weeks. Safety risk at night.', category: 'lighting', severity: 'medium', status: 'assigned', location: { lat: 12.9716, lng: 77.5946, address: 'Cubbon Park, Bengaluru' }, images: [], upvotes: [], upvoteCount: 18, assignedDept: 'Electricity Department', reportedBy: { name: 'Lakshmi Rao', level: 'Community Guardian' }, timeline: [{ status: 'submitted', message: 'Submitted', timestamp: new Date(Date.now() - 10 * 86400000) }, { status: 'assigned', message: 'Assigned to Electricity Dept', timestamp: new Date(Date.now() - 3 * 86400000) }], createdAt: new Date(Date.now() - 10 * 86400000) },
+    { id: 'demo_i4', title: 'Water Pipeline Leakage on Station Road', description: 'Major pipe burst causing water wastage and road damage. Affecting 200+ households.', category: 'water', severity: 'critical', status: 'resolved', location: { lat: 19.0760, lng: 72.8777, address: 'Station Road, Mumbai' }, images: [], resolvedImage: '', upvotes: [], upvoteCount: 92, assignedDept: 'Water Supply Board', reportedBy: { name: 'Rahul Singh', level: 'Civic Champion' }, timeline: [{ status: 'submitted', message: 'Submitted', timestamp: new Date(Date.now() - 15 * 86400000) }, { status: 'progress', message: 'Repair team on-site', timestamp: new Date(Date.now() - 12 * 86400000) }, { status: 'resolved', message: 'Pipeline repaired and tested', timestamp: new Date(Date.now() - 8 * 86400000) }], createdAt: new Date(Date.now() - 15 * 86400000), resolvedAt: new Date(Date.now() - 8 * 86400000) },
+    { id: 'demo_i5', title: 'Open Manhole on Brigade Road', description: 'Uncovered manhole in busy pedestrian area. Already caused one injury. Immediate action needed.', category: 'drainage', severity: 'critical', status: 'verified', location: { lat: 12.9766, lng: 77.6031, address: 'Brigade Road, Bengaluru' }, images: [], upvotes: [], upvoteCount: 65, assignedDept: 'Drainage & Infrastructure', reportedBy: { name: 'Sneha Patel', level: 'Eco Warrior' }, timeline: [{ status: 'submitted', message: 'Submitted', timestamp: new Date(Date.now() - 1 * 86400000) }, { status: 'verified', message: 'Verified by admin', timestamp: new Date(Date.now() - 12 * 3600000) }], createdAt: new Date(Date.now() - 86400000) },
 ];
 
 // Haversine formula for distance in km
@@ -46,6 +50,40 @@ function getDepartment(category) {
     return deptMap[category] || 'Municipal Corporation';
 }
 
+// Helper to map Sequelize Issue to MongoDB Response Format
+const mapIssueForResponse = async (issue) => {
+    if (!issue) return null;
+    const iJson = issue.toJSON ? issue.toJSON() : issue;
+    
+    // Nest location properties back to nested object
+    iJson.location = {
+        lat: iJson.locationLat,
+        lng: iJson.locationLng,
+        address: iJson.locationAddress || '',
+        ward: iJson.locationWard || '',
+        district: iJson.locationDistrict || ''
+    };
+    delete iJson.locationLat;
+    delete iJson.locationLng;
+    delete iJson.locationAddress;
+    delete iJson.locationWard;
+    delete iJson.locationDistrict;
+
+    // Load upvotes array of user IDs
+    if (useDB()) {
+        const upvotes = await IssueUpvote.findAll({ where: { issueId: iJson.id } });
+        iJson.upvotes = upvotes.map(u => u.userId.toString());
+
+        const verifications = await IssueVerification.findAll({ where: { issueId: iJson.id } });
+        iJson.resolutionVerifiedBy = verifications.map(v => v.userId.toString());
+    } else {
+        iJson.upvotes = iJson.upvotes || [];
+        iJson.resolutionVerifiedBy = iJson.resolutionVerifiedBy || [];
+    }
+
+    return iJson;
+};
+
 // GET /api/issues - list with filtering, search, sorting
 router.get('/', async (req, res) => {
     try {
@@ -58,18 +96,47 @@ router.get('/', async (req, res) => {
             if (search) result = result.filter(i => i.title.toLowerCase().includes(search.toLowerCase()));
             return res.json({ issues: result, total: result.length, pages: 1, page: 1 });
         }
-        const Issue = require('../models/Issue');
+
         const { category, status, severity, search, sort = '-createdAt', page = 1, limit = 20 } = req.query;
         const filter = {};
+        
         if (category && category !== 'all') filter.category = category;
         if (status && status !== 'all') filter.status = status;
         if (severity && severity !== 'all') filter.severity = severity;
-        if (search) filter.$or = [{ title: { $regex: search, $options: 'i' } }, { description: { $regex: search, $options: 'i' } }];
-        const issues = await Issue.find(filter).populate('reportedBy', 'name avatar level').sort(sort).skip((page - 1) * limit).limit(parseInt(limit));
-        const total = await Issue.countDocuments(filter);
-        res.json({ issues, total, pages: Math.ceil(total / limit), page: parseInt(page) });
+        if (search) {
+            filter[Op.or] = [
+                { title: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        let order = [['createdAt', 'DESC']];
+        if (sort) {
+            const isDesc = sort.startsWith('-');
+            const field = isDesc ? sort.substring(1) : sort;
+            order = [[field, isDesc ? 'DESC' : 'ASC']];
+        }
+
+        const limitNum = parseInt(limit);
+        const offset = (parseInt(page) - 1) * limitNum;
+
+        const { rows: issues, count: total } = await Issue.findAndCountAll({
+            where: filter,
+            include: [{
+                model: User,
+                as: 'reportedBy',
+                attributes: ['name', 'avatar', 'level']
+            }],
+            order,
+            limit: limitNum,
+            offset
+        });
+
+        const mappedIssues = await Promise.all(issues.map(mapIssueForResponse));
+
+        res.json({ issues: mappedIssues, total, pages: Math.ceil(total / limitNum), page: parseInt(page) });
     } catch (err) {
-        console.error(err);
+        console.error('List issues error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -89,14 +156,25 @@ router.get('/stats', async (req, res) => {
                 byCategory: Object.entries(cats).map(([_id, count]) => ({ _id, count }))
             });
         }
-        const Issue = require('../models/Issue');
-        const total = await Issue.countDocuments();
-        const resolved = await Issue.countDocuments({ status: 'resolved' });
-        const inProgress = await Issue.countDocuments({ status: 'progress' });
-        const submitted = await Issue.countDocuments({ status: 'submitted' });
-        const byCat = await Issue.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]);
-        res.json({ total, resolved, inProgress, submitted, resolutionRate: total > 0 ? Math.round((resolved / total) * 100) : 0, avgResolutionDays: 3.2, byCategory: byCat });
+
+        const total = await Issue.count();
+        const resolved = await Issue.count({ where: { status: 'resolved' } });
+        const inProgress = await Issue.count({ where: { status: 'progress' } });
+        const submitted = await Issue.count({ where: { status: 'submitted' } });
+
+        const byCatRaw = await Issue.findAll({
+            attributes: [
+                ['category', '_id'],
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            group: ['category'],
+            raw: true
+        });
+        const byCategory = byCatRaw.map(x => ({ _id: x._id, count: parseInt(x.count) }));
+
+        res.json({ total, resolved, inProgress, submitted, resolutionRate: total > 0 ? Math.round((resolved / total) * 100) : 0, avgResolutionDays: 3.2, byCategory });
     } catch (err) {
+        console.error('Issue stats error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -105,18 +183,33 @@ router.get('/stats', async (req, res) => {
 router.get('/nearby', async (req, res) => {
     try {
         if (!useDB()) return res.json({ count: 0, issues: [] });
-        const Issue = require('../models/Issue');
+
         const { lat, lng, radius = 0.5, category } = req.query;
         if (!lat || !lng) return res.status(400).json({ message: 'lat and lng required' });
+
         const latNum = parseFloat(lat), lngNum = parseFloat(lng), radiusNum = parseFloat(radius);
         const latDelta = radiusNum / 111;
         const lngDelta = radiusNum / (111 * Math.cos(latNum * Math.PI / 180));
-        const filter = { 'location.lat': { $gte: latNum - latDelta, $lte: latNum + latDelta }, 'location.lng': { $gte: lngNum - lngDelta, $lte: lngNum + lngDelta }, status: { $ne: 'resolved' } };
+
+        const filter = {
+            locationLat: { [Op.between]: [latNum - latDelta, latNum + latDelta] },
+            locationLng: { [Op.between]: [lngNum - lngDelta, lngNum + lngDelta] },
+            status: { [Op.ne]: 'resolved' }
+        };
         if (category) filter.category = category;
-        const nearby = await Issue.find(filter).populate('reportedBy', 'name').limit(10);
-        const filtered = nearby.filter(issue => getDistance(latNum, lngNum, issue.location.lat, issue.location.lng) <= radiusNum);
+
+        const nearby = await Issue.findAll({
+            where: filter,
+            include: [{ model: User, as: 'reportedBy', attributes: ['name'] }],
+            limit: 10
+        });
+
+        const mappedNearby = await Promise.all(nearby.map(mapIssueForResponse));
+        const filtered = mappedNearby.filter(issue => getDistance(latNum, lngNum, issue.location.lat, issue.location.lng) <= radiusNum);
+
         res.json({ count: filtered.length, issues: filtered });
     } catch (err) {
+        console.error('Nearby issues error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -125,18 +218,39 @@ router.get('/nearby', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         if (!useDB()) {
-            const demo = DEMO_ISSUES.find(i => i._id === req.params.id);
+            const demo = DEMO_ISSUES.find(i => i.id === req.params.id);
             if (!demo) return res.status(404).json({ message: 'Issue not found' });
             return res.json(demo);
         }
-        if (useDB()) {
-            if (!isValidId(req.params.id)) return res.status(404).json({ message: 'Invalid Issue ID format' });
-            const Issue = require('../models/Issue');
-            const issue = await Issue.findById(req.params.id).populate('reportedBy', 'name avatar level points').populate('timeline.updatedBy', 'name');
-            if (!issue) return res.status(404).json({ message: 'Issue not found' });
-            return res.json(issue);
-        }
+
+        if (!isValidId(req.params.id)) return res.status(404).json({ message: 'Invalid Issue ID format' });
+
+        const issue = await Issue.findByPk(req.params.id, {
+            include: [
+                {
+                    model: User,
+                    as: 'reportedBy',
+                    attributes: ['name', 'avatar', 'level', 'points']
+                },
+                {
+                    model: IssueTimeline,
+                    as: 'timeline',
+                    include: [{
+                        model: User,
+                        as: 'updatedBy',
+                        attributes: ['name']
+                    }]
+                }
+            ],
+            order: [[{ model: IssueTimeline, as: 'timeline' }, 'timestamp', 'ASC']]
+        });
+
+        if (!issue) return res.status(404).json({ message: 'Issue not found' });
+
+        const mappedIssue = await mapIssueForResponse(issue);
+        return res.json(mappedIssue);
     } catch (err) {
+        console.error('Get issue by id error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -159,9 +273,9 @@ router.post('/', authMiddleware, upload.fields([
         if (!useDB()) {
             // Demo mode: add to in-memory array
             const demoIssue = {
-                _id: 'issue_' + Date.now(), title, description, category, severity: severity || 'medium',
+                id: 'issue_' + Date.now(), title, description, category, severity: severity || 'medium',
                 status: 'submitted', location: { lat: parseFloat(lat), lng: parseFloat(lng), address: address || '' },
-                images, audio, reportedBy: { _id: req.user.id, name: req.user.name || 'You', level: 'Civic Newcomer' },
+                images, audio, reportedBy: { id: req.user.id, name: req.user.name || 'You', level: 'Civic Newcomer' },
                 assignedDept: getDepartment(category), aiCategory: aiCategory || '', aiConfidence: parseFloat(aiConfidence) || 0,
                 upvotes: [], upvoteCount: 0, timeline: [{ status: 'submitted', message: 'Issue submitted by citizen', timestamp: new Date() }],
                 estimatedResolution: new Date(Date.now() + days * 86400000), createdAt: new Date(), updatedAt: new Date()
@@ -171,41 +285,73 @@ router.post('/', authMiddleware, upload.fields([
             return res.status(201).json(demoIssue);
         }
 
-        const Issue = require('../models/Issue');
-        const User = require('../models/User');
-        const Notification = require('../models/Notification');
-        const issue = new Issue({
-            title, description, category, severity: severity || 'medium',
-            location: { lat: parseFloat(lat), lng: parseFloat(lng), address: address || '' },
-            images, audio, reportedBy: req.user.id, assignedDept: getDepartment(category),
-            aiCategory: aiCategory || '', aiConfidence: parseFloat(aiConfidence) || 0,
+        const issue = await Issue.create({
+            title,
+            description,
+            category,
+            severity: severity || 'medium',
+            locationLat: parseFloat(lat),
+            locationLng: parseFloat(lng),
+            locationAddress: address || '',
+            images,
+            audio,
+            reportedById: req.user.id,
+            assignedDept: getDepartment(category),
+            aiCategory: aiCategory || '',
+            aiConfidence: parseFloat(aiConfidence) || 0,
             estimatedResolution: new Date(Date.now() + days * 86400000)
         });
-        issue.timeline.push({ status: 'submitted', message: 'Issue submitted by citizen', updatedBy: req.user.id });
-        await issue.save();
-        await User.findByIdAndUpdate(req.user.id, { $inc: { points: 15, reportCount: 1, treesSaved: 0.02, co2Reduced: 0.5, paperSaved: 5 } });
-        await Notification.create({ user: req.user.id, title: 'Issue Submitted!', message: `Your issue "${title}" submitted. +15 pts!`, type: 'status_update', relatedIssue: issue._id });
 
-        const reporter = await User.findById(req.user.id);
+        // Add timeline entry
+        await IssueTimeline.create({
+            issueId: issue.id,
+            status: 'submitted',
+            message: 'Issue submitted by citizen',
+            updatedById: req.user.id
+        });
+
+        // Increment user values
+        await User.increment(
+            { points: 15, reportCount: 1, treesSaved: 0.02, co2Reduced: 0.5, paperSaved: 5 },
+            { where: { id: req.user.id } }
+        );
+
+        // Notify user
+        await Notification.create({
+            userId: req.user.id,
+            title: 'Issue Submitted!',
+            message: `Your issue "${title}" submitted. +15 pts!`,
+            type: 'status_update',
+            relatedIssueId: issue.id
+        });
+
+        const reporter = await User.findByPk(req.user.id);
         if (reporter && (reporter.email || reporter.whatsapp)) {
-            await notifyIssueUpdate(reporter, title, 'submitted', issue._id.toString());
+            await notifyIssueUpdate(reporter, title, 'submitted', issue.id.toString());
             console.log(`[NOTIFICATION] Submission sent to reporter: ${reporter.email || reporter.whatsapp || 'N/A'}`);
         }
 
         // Notify all admins of the new issue
-        const admins = await User.find({ role: 'admin' });
+        const admins = await User.findAll({ where: { role: 'admin' } });
         const adminNotifs = admins.map(a => ({
-            user: a._id,
+            userId: a.id,
             title: 'New Issue Reported 🚨',
             message: `A new ${severity} severity issue "${title}" was reported.`,
             type: 'system',
-            relatedIssue: issue._id
+            relatedIssueId: issue.id
         }));
-        if (adminNotifs.length) await Notification.insertMany(adminNotifs);
+        if (adminNotifs.length) {
+            await Notification.bulkCreate(adminNotifs);
+        }
 
-        res.status(201).json(issue);
+        const responseIssue = await Issue.findByPk(issue.id, {
+            include: [{ model: User, as: 'reportedBy', attributes: ['name', 'avatar', 'level'] }]
+        });
+        const mappedIssue = await mapIssueForResponse(responseIssue);
+
+        res.status(201).json(mappedIssue);
     } catch (err) {
-        console.error(err);
+        console.error('Create issue error:', err);
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 });
@@ -214,24 +360,44 @@ router.post('/', authMiddleware, upload.fields([
 router.put('/:id/upvote', authMiddleware, async (req, res) => {
     try {
         if (!useDB()) { // Demo mode
-            const issue = DEMO_ISSUES.find(i => i._id === req.params.id);
+            const issue = DEMO_ISSUES.find(i => i.id === req.params.id);
             if (!issue) return res.status(404).json({ message: 'Issue not found' });
             const already = issue.upvotes.includes(req.user.id);
-            if (already) { issue.upvotes = issue.upvotes.filter(id => id !== req.user.id); issue.upvoteCount = Math.max(0, issue.upvoteCount - 1); }
-            else { issue.upvotes.push(req.user.id); issue.upvoteCount++; }
+            if (already) {
+                issue.upvotes = issue.upvotes.filter(id => id !== req.user.id);
+                issue.upvoteCount = Math.max(0, issue.upvoteCount - 1);
+            }
+            else {
+                issue.upvotes.push(req.user.id);
+                issue.upvoteCount++;
+            }
             return res.json({ upvoteCount: issue.upvoteCount, upvoted: !already });
         }
+
         // DB mode
         if (!isValidId(req.params.id)) return res.status(404).json({ message: 'Invalid Issue ID format' });
-        const issue = await Issue.findById(req.params.id);
+
+        const issue = await Issue.findByPk(req.params.id);
         if (!issue) return res.status(404).json({ message: 'Issue not found' });
+
         const userId = req.user.id;
-        const alreadyUpvoted = issue.upvotes.includes(userId);
-        if (alreadyUpvoted) { issue.upvotes = issue.upvotes.filter(id => id.toString() !== userId); issue.upvoteCount = Math.max(0, issue.upvoteCount - 1); }
-        else { issue.upvotes.push(userId); issue.upvoteCount += 1; await User.findByIdAndUpdate(userId, { $inc: { points: 2, upvotesGiven: 1 } }); }
-        await issue.save();
-        res.json({ upvoteCount: issue.upvoteCount, upvoted: !alreadyUpvoted });
+        const alreadyUpvoted = await IssueUpvote.findOne({
+            where: { issueId: req.params.id, userId }
+        });
+
+        if (alreadyUpvoted) {
+            await alreadyUpvoted.destroy();
+            await issue.decrement('upvoteCount', { by: 1 });
+        } else {
+            await IssueUpvote.create({ issueId: req.params.id, userId });
+            await issue.increment('upvoteCount', { by: 1 });
+            await User.increment({ points: 2, upvotesGiven: 1 }, { where: { id: userId } });
+        }
+
+        const updatedIssue = await Issue.findByPk(req.params.id);
+        res.json({ upvoteCount: updatedIssue.upvoteCount, upvoted: !alreadyUpvoted });
     } catch (err) {
+        console.error('Upvote error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -239,12 +405,13 @@ router.put('/:id/upvote', authMiddleware, async (req, res) => {
 // PUT /api/issues/:id/status - admin only
 router.put('/:id/status', authMiddleware, upload.single('resolvedImage'), async (req, res) => {
     try {
-        if (req.user.role !== 'admin' && req.user.role !== 'dept_admin') return res.status(403).json({ message: 'Admin only access required' });
+        if (req.user.role !== 'admin' && req.user.role !== 'dept_admin')
+            return res.status(403).json({ message: 'Admin only access required' });
 
         const { status, message, assignedDept } = req.body;
 
         if (!useDB()) {
-            const demoIssue = DEMO_ISSUES.find(i => i._id === req.params.id);
+            const demoIssue = DEMO_ISSUES.find(i => i.id === req.params.id);
             if (!demoIssue) return res.status(404).json({ message: 'Issue not found' });
 
             demoIssue.status = status;
@@ -254,8 +421,12 @@ router.put('/:id/status', authMiddleware, upload.single('resolvedImage'), async 
             console.log(`[EMAIL/SMS MOCK] Sending Email & SMS to user: Issue "${demoIssue.title}" status updated to ${status}`);
             return res.json(demoIssue);
         }
+
         if (!isValidId(req.params.id)) return res.status(404).json({ message: 'Invalid Issue ID format' });
-        const issue = await Issue.findById(req.params.id).populate('reportedBy', 'name email phone whatsapp notifyEmail notifyWhatsapp');
+
+        const issue = await Issue.findByPk(req.params.id, {
+            include: [{ model: User, as: 'reportedBy' }]
+        });
         if (!issue) return res.status(404).json({ message: 'Issue not found' });
 
         // Dept admins can only update issues assigned to their department
@@ -263,47 +434,62 @@ router.put('/:id/status', authMiddleware, upload.single('resolvedImage'), async 
             return res.status(403).json({ message: 'You can only update issues assigned to your department' });
         }
 
-        issue.status = status;
-        if (assignedDept) issue.assignedDept = assignedDept;
-        if (req.file) issue.resolvedImage = `/uploads/${req.file.filename}`;
+        const updateObj = { status };
+        if (assignedDept) updateObj.assignedDept = assignedDept;
+        if (req.file) updateObj.resolvedImage = `/uploads/${req.file.filename}`;
 
         if (status === 'resolved') {
-            issue.resolvedAt = new Date();
+            updateObj.resolvedAt = new Date();
             // Award points to reporter
-            if (issue.reportedBy && issue.reportedBy._id) {
-                await User.findByIdAndUpdate(issue.reportedBy._id, {
-                    $inc: { points: 25, resolvedCount: 1 }
-                });
+            if (issue.reportedBy && issue.reportedBy.id) {
+                await User.increment(
+                    { points: 25, resolvedCount: 1 },
+                    { where: { id: issue.reportedBy.id } }
+                );
             }
         }
+        updateObj.updatedAt = new Date();
+        await issue.update(updateObj);
 
-        issue.timeline.push({
+        // Add timeline entry
+        await IssueTimeline.create({
+            issueId: issue.id,
             status,
             message: message || `Status updated to ${status}`,
-            updatedBy: req.user.id
+            updatedById: req.user.id
         });
-        issue.updatedAt = new Date();
-        await issue.save();
 
-        if (issue.reportedBy && issue.reportedBy._id) {
+        if (issue.reportedBy && issue.reportedBy.id) {
             // Notify reporter
             await Notification.create({
-                user: issue.reportedBy._id,
+                userId: issue.reportedBy.id,
                 title: `Issue ${status === 'resolved' ? 'Resolved! 🎉' : 'Updated'}`,
                 message: message || `Your issue "${issue.title}" status changed to ${status}`,
                 type: 'status_update',
-                relatedIssue: issue._id
+                relatedIssueId: issue.id
             });
 
             // Real WhatsApp + Email notification
-            await notifyIssueUpdate(issue.reportedBy, issue.title, status, issue._id.toString());
-            console.log(`[NOTIFICATION] Sent to reporter: ${issue.reportedBy.email || 'N/A'}`);
-
+            const reporter = await User.findByPk(issue.reportedBy.id);
+            await notifyIssueUpdate(reporter, issue.title, status, issue.id.toString());
+            console.log(`[NOTIFICATION] Sent to reporter: ${reporter.email || 'N/A'}`);
         }
 
-        res.json(issue);
+        const reloaded = await Issue.findByPk(issue.id, {
+            include: [
+                { model: User, as: 'reportedBy', attributes: ['name', 'avatar', 'level'] },
+                {
+                    model: IssueTimeline,
+                    as: 'timeline',
+                    include: [{ model: User, as: 'updatedBy', attributes: ['name'] }]
+                }
+            ]
+        });
+        const mappedIssue = await mapIssueForResponse(reloaded);
+
+        res.json(mappedIssue);
     } catch (err) {
-        console.error(err);
+        console.error('Update issue status error:', err);
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 });
@@ -312,22 +498,41 @@ router.put('/:id/status', authMiddleware, upload.single('resolvedImage'), async 
 router.get('/user/mine', authMiddleware, async (req, res) => {
     try {
         if (!useDB()) {
-            // Return demo issues attributed to this user for demo citizen
             const mine = DEMO_ISSUES.filter(i =>
-                (i.reportedBy?._id === req.user.id) ||
-                (req.user.id === 'demo_citizen_001' && ['demo_i1', 'demo_i2'].includes(i._id))
+                (i.reportedBy?.id === req.user.id) ||
+                (req.user.id === 'demo_citizen_001' && ['demo_i1', 'demo_i2'].includes(i.id))
             );
             return res.json({ issues: mine, total: mine.length });
         }
-        const Issue = require('../models/Issue');
+
         const { status, category, sort = '-createdAt', page = 1, limit = 10 } = req.query;
-        const filter = { reportedBy: req.user.id };
+        const filter = { reportedById: req.user.id };
         if (status && status !== 'all') filter.status = status;
         if (category && category !== 'all') filter.category = category;
-        const issues = await Issue.find(filter).sort(sort).skip((page - 1) * limit).limit(parseInt(limit));
-        const total = await Issue.countDocuments({ reportedBy: req.user.id });
-        res.json({ issues, total });
+
+        let order = [['createdAt', 'DESC']];
+        if (sort) {
+            const isDesc = sort.startsWith('-');
+            const field = isDesc ? sort.substring(1) : sort;
+            order = [[field, isDesc ? 'DESC' : 'ASC']];
+        }
+
+        const limitNum = parseInt(limit);
+        const offset = (parseInt(page) - 1) * limitNum;
+
+        const issues = await Issue.findAll({
+            where: filter,
+            order,
+            limit: limitNum,
+            offset
+        });
+
+        const total = await Issue.count({ where: { reportedById: req.user.id } });
+        const mappedIssues = await Promise.all(issues.map(mapIssueForResponse));
+
+        res.json({ issues: mappedIssues, total });
     } catch (err) {
+        console.error('Get my issues error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
