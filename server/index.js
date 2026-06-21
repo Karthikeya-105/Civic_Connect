@@ -48,6 +48,36 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Attach io to request
 app.use((req, res, next) => { req.io = io; next(); });
 
+// Middleware to recursively map 'id' to '_id' for frontend compatibility (migration from MongoDB to SQL)
+app.use((req, res, next) => {
+    const originalJson = res.json;
+    res.json = function (body) {
+        const mapId = (obj) => {
+            if (obj === null || obj === undefined) return obj;
+            if (Array.isArray(obj)) {
+                return obj.map(mapId);
+            }
+            if (typeof obj === 'object') {
+                const rawObj = (obj.toJSON && typeof obj.toJSON === 'function') ? obj.toJSON() : obj;
+                const newObj = {};
+                for (const key in rawObj) {
+                    if (Object.prototype.hasOwnProperty.call(rawObj, key)) {
+                        newObj[key] = mapId(rawObj[key]);
+                    }
+                }
+                if (rawObj.id !== undefined && rawObj._id === undefined) {
+                    newObj._id = rawObj.id;
+                }
+                return newObj;
+            }
+            return obj;
+        };
+        const mappedBody = mapId(body);
+        return originalJson.call(this, mappedBody);
+    };
+    next();
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/issues', require('./routes/issues'));
