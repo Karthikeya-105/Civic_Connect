@@ -4,7 +4,7 @@
   ],
   "build": {
     "env": {
-      "VITE_API_URL": "https://civic-connect-api-oumt.onrender.com"
+      "VITE_API_URL": "https://civic-connect-api-oumt.onrender.com/api"
     }
   }
 }
